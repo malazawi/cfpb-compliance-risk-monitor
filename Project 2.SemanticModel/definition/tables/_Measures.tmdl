@@ -1,0 +1,271 @@
+table _Measures
+	lineageTag: 510259b0-31e6-4695-ab3b-3b5853d88ffd
+
+	/// Number of complaints in the current filter context.
+	measure Complaints = COUNTROWS ( complaints )
+		formatString: #,0
+		displayFolder: 1 Volume
+		lineageTag: 70dc04a8-432e-421b-bc6e-50e844e7cfec
+
+	/// Share of complaints relative to everything currently selected (e.g., a company's share of all companies shown).
+	measure 'Complaint Share' = DIVIDE ( [Complaints], CALCULATE ( [Complaints], ALLSELECTED () ) )
+		formatString: 0.0%
+		displayFolder: 1 Volume
+		lineageTag: a767c3d9-72b7-4493-ac29-b44cc3014b15
+
+	/// Most recent complaint date in the dataset, ignoring date filters. Used for 'data as of' labels.
+	measure 'Latest Complaint Date' = CALCULATE ( MAX ( complaints[Date received] ), ALL ( 'Date' ) )
+		formatString: mmm d, yyyy
+		displayFolder: 1 Volume
+		lineageTag: f2815837-cf79-4e15-9321-a3b6d3a3de91
+
+	/// Complaints the company answered within the CFPB 15-day response window.
+	measure 'Timely Responses' = CALCULATE ( [Complaints], complaints[Timely response?] = "Yes" )
+		formatString: #,0
+		displayFolder: 2 Compliance
+		lineageTag: 48a8b8fb-effe-4993-82fc-11ea6d43850e
+
+	/// Complaints the company did NOT answer within the response window - the core compliance failure.
+	measure 'Untimely Responses' = CALCULATE ( [Complaints], complaints[Timely response?] = "No" )
+		formatString: #,0
+		displayFolder: 2 Compliance
+		lineageTag: 25218b46-819e-4b64-a9ad-5299d4221717
+
+	/// Timely responses as a share of complaints with a recorded timeliness outcome.
+	measure 'Timely Response Rate' = DIVIDE ( [Timely Responses], [Timely Responses] + [Untimely Responses] )
+		formatString: 0.0%
+		displayFolder: 2 Compliance
+		lineageTag: a055cc14-9b77-4ab9-a42b-9efdc185ea2e
+
+	/// Untimely responses as a share of complaints with a recorded timeliness outcome.
+	measure 'Untimely Rate' = DIVIDE ( [Untimely Responses] + 0, [Timely Responses] + [Untimely Responses] )
+		formatString: 0.00%
+		displayFolder: 2 Compliance
+		lineageTag: cd7340c9-f05b-4553-bcb7-ed698bbd857d
+
+	/// Average days between the CFPB receiving a complaint and sending it to the company.
+	measure 'Avg Days to Forward' =
+			AVERAGEX (
+			    complaints,
+			    INT ( complaints[Date sent to company] - complaints[Date received] )
+			)
+		formatString: 0.0
+		displayFolder: 2 Compliance
+		lineageTag: 7258a24b-609e-495d-8f3f-78bd09aeb5f2
+
+	/// Complaints with a final company response (excludes 'In progress').
+	measure 'Closed Complaints' =
+			CALCULATE (
+			    [Complaints],
+			    NOT complaints[Company response to consumer] IN { "In progress" }
+			)
+		formatString: #,0
+		displayFolder: 3 Outcomes
+		lineageTag: eeb0eb61-88d5-4942-a2f7-14c3f90d3a41
+
+	/// Complaints closed with monetary or non-monetary relief for the consumer.
+	measure 'Relief Complaints' =
+			CALCULATE (
+			    [Complaints],
+			    complaints[Company response to consumer]
+			        IN { "Closed with monetary relief", "Closed with non-monetary relief" }
+			)
+		formatString: #,0
+		displayFolder: 3 Outcomes
+		lineageTag: 66659d23-07ff-4889-a71a-3027d876ade1
+
+	/// Share of closed complaints where the consumer received relief - a proxy for complaints that had merit.
+	measure 'Relief Rate' = DIVIDE ( [Relief Complaints] + 0, [Closed Complaints] )
+		formatString: 0.0%
+		displayFolder: 3 Outcomes
+		lineageTag: 4ae477a9-ce45-438e-b3a5-d521d27821ed
+
+	/// Complaints in the same period last year, capped at the latest data date so partial periods compare like-for-like.
+	measure 'Complaints PY' =
+			VAR AsOfDate = [Latest Complaint Date]
+			VAR CurrentDates =
+			    FILTER ( VALUES ( 'Date'[Date] ), 'Date'[Date] <= AsOfDate )
+			RETURN
+			    CALCULATE ( [Complaints], SAMEPERIODLASTYEAR ( CurrentDates ) )
+		formatString: #,0
+		displayFolder: 4 Trend & Risk
+		lineageTag: 7befb581-5a17-4931-a03a-be07cde85d9d
+
+	/// Year-over-year change in complaints versus the comparable prior-year period.
+	measure 'Complaints YoY %' =
+			VAR PY = [Complaints PY]
+			RETURN
+			    IF ( NOT ISBLANK ( PY ), DIVIDE ( [Complaints] - PY, PY ) )
+		formatString: +0.0%;-0.0%;0.0%
+		displayFolder: 4 Trend & Risk
+		lineageTag: 70d49509-b6c1-4a63-8fad-65aa0cb020d0
+
+	/// Complaints in the 90 days ending on the latest data date (ignores date slicers).
+	measure 'Complaints Last 90 Days' =
+			VAR AsOfDate = [Latest Complaint Date]
+			RETURN
+			    CALCULATE (
+			        [Complaints],
+			        DATESBETWEEN ( 'Date'[Date], AsOfDate - 89, AsOfDate )
+			    )
+		formatString: #,0
+		displayFolder: 4 Trend & Risk
+		lineageTag: bfa35285-57d2-459d-848e-9857a0aa1b2b
+
+	/// Complaints in the 90 days before the most recent 90-day window.
+	measure 'Complaints Prior 90 Days' =
+			VAR AsOfDate = [Latest Complaint Date]
+			RETURN
+			    CALCULATE (
+			        [Complaints],
+			        DATESBETWEEN ( 'Date'[Date], AsOfDate - 179, AsOfDate - 90 )
+			    )
+		formatString: #,0
+		displayFolder: 4 Trend & Risk
+		lineageTag: 115d24f3-6b28-43cb-9573-11aee5deab2d
+
+	/// Change in complaint volume: last 90 days vs the prior 90 days.
+	measure '90-Day Growth %' =
+			DIVIDE (
+			    [Complaints Last 90 Days] - [Complaints Prior 90 Days],
+			    [Complaints Prior 90 Days]
+			)
+		formatString: +0.0%;-0.0%;0.0%
+		displayFolder: 4 Trend & Risk
+		lineageTag: c4e1032d-aa9d-4587-b5c3-76cb2dfc33eb
+
+	/// Early-warning flag: Rising = volume up 25%+ over the prior 90 days on a meaningful base (100+ complaints); Falling = down 25%+.
+	measure 'Risk Signal' =
+			VAR Growth = [90-Day Growth %]
+			VAR Base = [Complaints Prior 90 Days]
+			RETURN
+			    SWITCH (
+			        TRUE (),
+			        Base < 100, "Low volume",
+			        Growth >= 0.25, "Rising",
+			        Growth <= -0.25, "Falling",
+			        "Stable"
+			    )
+		displayFolder: 4 Trend & Risk
+		lineageTag: adbe3892-b9be-41ed-837b-f4ddcde53b97
+
+	/// Untimely response rate over the same 90-day window used for growth, so the risk quadrant compares like with like.
+	measure 'Untimely Rate (90d)' =
+			VAR AsOfDate = [Latest Complaint Date]
+			RETURN
+			    CALCULATE (
+			        [Untimely Rate],
+			        DATESBETWEEN ( 'Date'[Date], AsOfDate - 89, AsOfDate )
+			    )
+		formatString: 0.00%
+		displayFolder: 2 Compliance
+		lineageTag: ebb59acc-3eba-4a19-a9d2-7bed0c8b7d77
+
+	/// Complaints from Jan 1 to the latest date in the selection (or the latest data date, whichever is earlier).
+	measure 'Complaints YTD' =
+			VAR AsOfDate = [Latest Complaint Date]
+			VAR EndDate = MIN ( MAX ( 'Date'[Date] ), AsOfDate )
+			RETURN
+			    CALCULATE (
+			        [Complaints],
+			        DATESBETWEEN ( 'Date'[Date], DATE ( YEAR ( EndDate ), 1, 1 ), EndDate )
+			    )
+		formatString: #,0
+		displayFolder: 4 Trend & Risk
+		lineageTag: 0fa06225-51c0-4c6b-b0cb-96f3f0a5efcc
+
+	/// Complaints in the same Jan 1 to date window one year earlier.
+	measure 'Complaints YTD PY' =
+			VAR AsOfDate = [Latest Complaint Date]
+			VAR EndDate = MIN ( MAX ( 'Date'[Date] ), AsOfDate )
+			RETURN
+			    CALCULATE (
+			        [Complaints],
+			        DATESBETWEEN ( 'Date'[Date], DATE ( YEAR ( EndDate ) - 1, 1, 1 ), EDATE ( EndDate, -12 ) )
+			    )
+		formatString: #,0
+		displayFolder: 4 Trend & Risk
+		lineageTag: 49e8a3c0-69e0-461e-a596-aee18cdde09c
+
+	/// Year-to-date complaints vs the same period last year - the headline growth KPI.
+	measure 'YTD Growth %' =
+			VAR PY = [Complaints YTD PY]
+			RETURN
+			    IF ( NOT ISBLANK ( PY ), DIVIDE ( [Complaints YTD] - PY, PY ) )
+		formatString: +0.0%;-0.0%;0.0%
+		displayFolder: 4 Trend & Risk
+		lineageTag: 1dc4e46d-a7f7-4b91-9088-6da02cd6e9c9
+
+	/// Absolute change in complaints: last 90 days minus the prior 90 days. Shows what is driving growth.
+	measure '90-Day Change' = [Complaints Last 90 Days] - [Complaints Prior 90 Days]
+		formatString: +#,0;-#,0;0
+		displayFolder: 4 Trend & Risk
+		lineageTag: 55eb8d04-f0c7-45a3-a8e7-923653d43b40
+
+	/// 1 if the month on the axis is fully covered by the data (used to hide the partial current month on trend charts).
+	measure 'Is Complete Month' =
+			VAR AsOfDate = [Latest Complaint Date]
+			RETURN
+			    IF ( MAX ( 'Date'[Month Start] ) < DATE ( YEAR ( AsOfDate ), MONTH ( AsOfDate ), 1 ), 1, 0 )
+		formatString: 0
+		displayFolder: 9 Helpers
+		lineageTag: efd38a42-585d-4bb5-b2a0-e2f1e90f12e9
+
+	/// Quadrant label for a company: Act first = growth 25%+ AND untimely 5%+ (about 12x the market average); Growing = growth only; Missing deadlines = untimely only.
+	measure 'Risk Quadrant' =
+			VAR Growth = [90-Day Growth %]
+			VAR Untimely = [Untimely Rate (90d)]
+			RETURN
+			    SWITCH (
+			        TRUE (),
+			        Growth >= 0.25 && Untimely >= 0.05, "Act first",
+			        Untimely >= 0.05, "Missing deadlines",
+			        Growth >= 0.25, "Growing",
+			        "Normal"
+			    )
+		displayFolder: 4 Trend & Risk
+		lineageTag: c0f9f374-9370-4837-ac24-f0100d3b5d63
+
+	/// Bubble color for the risk quadrant, driven by [Risk Quadrant].
+	measure 'Quadrant Color' =
+			SWITCH (
+			    [Risk Quadrant],
+			    "Act first", "#C0392B",
+			    "Missing deadlines", "#E08E45",
+			    "Growing", "#2E5090",
+			    "#B7C0CE"
+			)
+		displayFolder: 9 Helpers
+		lineageTag: 33175b82-b148-4444-b4c3-1a515abf96bb
+
+	/// Background shading for 90-day growth in tables.
+	measure 'Growth Color' =
+			VAR G = [90-Day Growth %]
+			RETURN
+			    SWITCH ( TRUE (), G >= 0.5, "#F4C7C3", G >= 0.25, "#FBE3D6" )
+		displayFolder: 9 Helpers
+		lineageTag: fec778fe-066b-40f8-9fb3-487ac9146850
+
+	/// Background shading for the 90-day untimely rate in tables.
+	measure 'Untimely Color' =
+			VAR U = [Untimely Rate (90d)]
+			RETURN
+			    SWITCH ( TRUE (), U >= 0.05, "#F4C7C3", U >= 0.01, "#FBE3D6" )
+		displayFolder: 9 Helpers
+		lineageTag: fc08992d-c022-4ea0-acce-16ec7b3a87cf
+
+	column Value
+		isHidden
+		lineageTag: fe46121a-2b9b-4a8c-adbc-4cd10d9b953a
+		summarizeBy: none
+		isNameInferred
+		sourceColumn: [Value]
+
+		annotation SummarizationSetBy = Automatic
+
+	partition _Measures = calculated
+		mode: import
+		source = { BLANK () }
+
+	annotation PBI_Id = b74b0bd0bc094e77a706e271581a5f43
+

@@ -1,0 +1,20 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/page/2.1.0/schema.json",
+  "name": "2d7270b25bdd423705be",
+  "displayName": "Risk Overview",
+  "displayOption": "FitToPage",
+  "height": 1080,
+  "width": 1920,
+  "visualInteractions": [
+    {
+      "source": "slcYear",
+      "target": "riskQuadrant",
+      "type": "NoFilter"
+    },
+    {
+      "source": "slcYear",
+      "target": "watchlist",
+      "type": "NoFilter"
+    }
+  ]
+}

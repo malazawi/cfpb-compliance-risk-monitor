@@ -1,0 +1,119 @@
+table complaints
+	lineageTag: 1a48f858-150a-4832-9525-dc7337794ab0
+
+	column 'Date received'
+		dataType: dateTime
+		formatString: Long Date
+		lineageTag: 3902c0ce-8d7e-4520-a044-beab3cd12b8f
+		summarizeBy: none
+		sourceColumn: Date received
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column Product
+		dataType: string
+		lineageTag: 06d52ec5-93f0-478b-930b-f171faa79a15
+		summarizeBy: none
+		sourceColumn: Product
+
+		annotation SummarizationSetBy = Automatic
+
+	column Sub-product
+		dataType: string
+		lineageTag: e32f8011-4fa1-4b24-a869-4a3cbcc6414e
+		summarizeBy: none
+		sourceColumn: Sub-product
+
+		annotation SummarizationSetBy = Automatic
+
+	column Issue
+		dataType: string
+		lineageTag: 26f37788-4ec3-436a-8b47-d733a588cda7
+		summarizeBy: none
+		sourceColumn: Issue
+
+		annotation SummarizationSetBy = Automatic
+
+	column Sub-issue
+		dataType: string
+		lineageTag: 4248af60-fe0e-4500-a92b-51e37c4c2576
+		summarizeBy: none
+		sourceColumn: Sub-issue
+
+		annotation SummarizationSetBy = Automatic
+
+	column Company
+		dataType: string
+		lineageTag: c1b600ff-ea6d-48bd-966d-37346a207a98
+		summarizeBy: none
+		sourceColumn: Company
+
+		annotation SummarizationSetBy = Automatic
+
+	column State
+		dataType: string
+		lineageTag: 5a15b5ae-144a-4703-b774-f8bcec8eeffd
+		summarizeBy: none
+		sourceColumn: State
+
+		annotation SummarizationSetBy = Automatic
+
+	column Tags
+		dataType: string
+		lineageTag: cde73550-d09b-4f3a-bd92-f3d3848cd09b
+		summarizeBy: none
+		sourceColumn: Tags
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Submitted via'
+		dataType: string
+		lineageTag: 225ed2d0-b988-40c8-a8ed-e7ec7ed62ca6
+		summarizeBy: none
+		sourceColumn: Submitted via
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Date sent to company'
+		dataType: dateTime
+		formatString: Long Date
+		lineageTag: 323ec670-9280-4956-9e79-42f8b18f499a
+		summarizeBy: none
+		sourceColumn: Date sent to company
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column 'Company response to consumer'
+		dataType: string
+		lineageTag: fd54280b-8231-434a-a520-48f71ad7c5d6
+		summarizeBy: none
+		sourceColumn: Company response to consumer
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Timely response?'
+		dataType: string
+		lineageTag: 408697eb-b64f-4f11-bde0-1c055e8ae7f4
+		summarizeBy: none
+		sourceColumn: Timely response?
+
+		annotation SummarizationSetBy = Automatic
+
+	partition complaints = m
+		mode: import
+		source =
+				let
+				  Source = Csv.Document(File.Contents("C:\Users\mhd3a\Downloads\complaints.csv\complaints.csv"), [Delimiter = ",", Columns = 15, QuoteStyle = QuoteStyle.None]),
+				  #"Promoted headers" = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
+				  #"Changed column type" = Table.TransformColumnTypes(#"Promoted headers", {{"Date received", type date}, {"Product", type text}, {"Sub-product", type text}, {"Issue", type text}, {"Sub-issue", type text}, {"Company public response", type text}, {"Company", type text}, {"State", type text}, {"ZIP code", type text}, {"Tags", type text}, {"Submitted via", type text}, {"Date sent to company", type date}, {"Company response to consumer", type text}, {"Timely response?", type text}, {"Complaint ID", Int64.Type}}),
+				  #"Filtered rows" = Table.SelectRows(#"Changed column type", each [Date received] > #date(2023, 12, 31)),
+				  #"Removed columns" = Table.RemoveColumns(#"Filtered rows", {"Company public response", "ZIP code", "Complaint ID"})
+				in
+				  #"Removed columns"
+
+	annotation PBI_ResultType = Table
+

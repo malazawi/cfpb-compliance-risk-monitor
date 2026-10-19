@@ -1,0 +1,92 @@
+table Date
+	lineageTag: 4fa66f4f-acad-466e-b0b0-208d1cdafc6e
+	dataCategory: Time
+
+	column Date
+		isKey
+		formatString: Short Date
+		lineageTag: 1de983e9-7710-48d8-a248-2130eae0c1ae
+		summarizeBy: none
+		isNameInferred
+		sourceColumn: [Date]
+
+		annotation SummarizationSetBy = Automatic
+
+	column Year
+		formatString: 0
+		lineageTag: dea592e7-648b-4556-bb39-25610dfe66dd
+		summarizeBy: none
+		isNameInferred
+		sourceColumn: [Year]
+
+		annotation SummarizationSetBy = Automatic
+
+	column Quarter
+		lineageTag: cbe9923d-5b0d-49a8-afb0-ab9fca3ce6e2
+		summarizeBy: none
+		isNameInferred
+		sourceColumn: [Quarter]
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Month Num'
+		isHidden
+		formatString: 0
+		lineageTag: e797f9d2-cc19-4cf0-9930-7a29fda2e602
+		summarizeBy: none
+		isNameInferred
+		sourceColumn: [Month Num]
+
+		annotation SummarizationSetBy = Automatic
+
+	column Month
+		lineageTag: 14afc820-8372-4633-8511-fa1e9887148a
+		summarizeBy: none
+		isNameInferred
+		sourceColumn: [Month]
+		sortByColumn: 'Month Num'
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Month Start'
+		formatString: mmm yyyy
+		lineageTag: 77352b9d-0ba9-4a45-be6d-83661d0cb0af
+		summarizeBy: none
+		isNameInferred
+		sourceColumn: [Month Start]
+
+		annotation SummarizationSetBy = Automatic
+
+	column Year-Month
+		lineageTag: 3d17b8f4-75c7-4c29-b3d9-199ae75348c6
+		summarizeBy: none
+		isNameInferred
+		sourceColumn: [Year-Month]
+
+		annotation SummarizationSetBy = Automatic
+
+	column Weekday
+		lineageTag: 5ab9369f-b692-40d2-b842-32ea0a2e406b
+		summarizeBy: none
+		isNameInferred
+		sourceColumn: [Weekday]
+		sortByColumn: 'Weekday Num'
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Weekday Num'
+		isHidden
+		formatString: 0
+		lineageTag: 824af6b0-f462-4a35-86a9-a3a88bf36aec
+		summarizeBy: none
+		isNameInferred
+		sourceColumn: [Weekday Num]
+
+		annotation SummarizationSetBy = Automatic
+
+	partition Date = calculated
+		mode: import
+		source = ADDCOLUMNS( CALENDAR( DATE( YEAR( MIN( complaints[Date received] ) ), 1, 1 ), EOMONTH( MAX( complaints[Date received] ), 0 ) ), "Year", YEAR([Date]), "Quarter", "Q" & QUARTER([Date]), "Month Num", MONTH([Date]), "Month", FORMAT([Date], "mmm"), "Month Start", DATE(YEAR([Date]), MONTH([Date]), 1), "Year-Month", FORMAT([Date], "yyyy-mm"), "Weekday", FORMAT([Date], "ddd"), "Weekday Num", WEEKDAY([Date], 2) )
+
+	annotation PBI_Id = f93bad855cdb49ce9a70ad78622560a3
+

@@ -1,0 +1,77 @@
+// Findings verification queries - CFPB Compliance Risk Monitor
+// Run in Power BI Desktop > DAX query view. Each EVALUATE returns one result table.
+
+// 1. Volume and timeliness by year, with credit reporting share
+EVALUATE
+SUMMARIZECOLUMNS (
+    'Date'[Year],
+    "Complaints", [Complaints],
+    "Credit Reporting Share",
+        DIVIDE (
+            CALCULATE ( [Complaints], CONTAINSSTRING ( complaints[Product], "Credit reporting" ) ),
+            [Complaints]
+        ),
+    "Timely Rate", [Timely Response Rate],
+    "Untimely", [Untimely Responses]
+)
+ORDER BY 'Date'[Year]
+
+// 2. Where missed deadlines concentrate: untimely responses by product (all time and last 90 days)
+EVALUATE
+TOPN (
+    8,
+    SUMMARIZECOLUMNS (
+        complaints[Product],
+        "Complaints", [Complaints],
+        "Untimely", [Untimely Responses],
+        "Untimely Rate", [Untimely Rate],
+        "Untimely Rate 90d", [Untimely Rate (90d)],
+        "Share Of All Untimely", DIVIDE ( [Untimely Responses], CALCULATE ( [Untimely Responses], REMOVEFILTERS ( complaints[Product] ) ) )
+    ),
+    [Untimely], DESC
+)
+ORDER BY [Untimely] DESC
+
+// 3. Companies missing the most deadlines in the last 90 days (100+ prior complaints)
+EVALUATE
+TOPN (
+    10,
+    FILTER (
+        SUMMARIZECOLUMNS (
+            complaints[Company],
+            "Last 90", [Complaints Last 90 Days],
+            "Prior 90", [Complaints Prior 90 Days],
+            "Untimely Rate 90d", [Untimely Rate (90d)],
+            "Quadrant", [Risk Quadrant]
+        ),
+        [Prior 90] >= 100 && [Untimely Rate 90d] >= 0.05
+    ),
+    [Last 90] * [Untimely Rate 90d], DESC
+)
+
+// 4. Monthly volume around the January 2025 spike, split credit reporting vs everything else
+EVALUATE
+CALCULATETABLE (
+    SUMMARIZECOLUMNS (
+        'Date'[Year-Month],
+        "Complaints", [Complaints],
+        "Credit Reporting",
+            CALCULATE ( [Complaints], CONTAINSSTRING ( complaints[Product], "Credit reporting" ) )
+    ),
+    DATESBETWEEN ( 'Date'[Date], DATE ( 2024, 10, 1 ), DATE ( 2025, 4, 30 ) )
+)
+ORDER BY 'Date'[Year-Month]
+
+// 5. Issue drivers: biggest 90-day increases
+EVALUATE
+TOPN (
+    5,
+    SUMMARIZECOLUMNS (
+        complaints[Issue],
+        "Last 90", [Complaints Last 90 Days],
+        "Prior 90", [Complaints Prior 90 Days],
+        "Change", [90-Day Change]
+    ),
+    [Change], DESC
+)
+ORDER BY [Change] DESC
