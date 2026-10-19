@@ -1,0 +1,6 @@
+EVALUATE
+VAR Dec24 = DATESBETWEEN ( 'Date'[Date], DATE ( 2024, 12, 1 ), DATE ( 2024, 12, 31 ) )
+VAR Jan25 = DATESBETWEEN ( 'Date'[Date], DATE ( 2025, 1, 1 ), DATE ( 2025, 1, 31 ) )
+VAR T = ADDCOLUMNS ( VALUES ( complaints[Product] ), "Dec 2024", CALCULATE ( [Complaints], Dec24 ), "Jan 2025", CALCULATE ( [Complaints], Jan25 ), "Jan Top Company", CALCULATE ( MAXX ( TOPN ( 1, VALUES ( complaints[Company] ), [Complaints], DESC ), complaints[Company] ), Jan25 ) )
+RETURN TOPN ( 6, ADDCOLUMNS ( T, "Change", [Jan 2025] - [Dec 2024] ), [Change], DESC )
+ORDER BY [Change] DESC
